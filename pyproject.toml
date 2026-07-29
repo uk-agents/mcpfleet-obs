@@ -1,0 +1,24 @@
+[project]
+name = "mcpfleet-obs"
+version = "0.1.0"
+description = "Shared error taxonomy, metrics, and client tracking for the mcpfleet MCP servers"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=3.2.3,<4",
+    "prometheus-client>=0.20",
+    "pydantic>=2.7",
+    "httpx>=0.27",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcpfleet_obs"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

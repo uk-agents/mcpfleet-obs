@@ -1,0 +1,106 @@
+{
+  "fastmcp_version": "3.4.5",
+  "cases": [
+    {
+      "tool": "dd_ok_tool",
+      "wire_result": {
+        "meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "fine",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": {
+          "result": "fine"
+        },
+        "isError": false
+      },
+      "observations": [
+        {
+          "side": "backend",
+          "tool": "ok_tool",
+          "saw": "result",
+          "is_error": false
+        },
+        {
+          "side": "proxy",
+          "tool": "dd_ok_tool",
+          "saw": "result",
+          "is_error": false
+        }
+      ]
+    },
+    {
+      "tool": "dd_failing_tool",
+      "wire_result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error_category\": \"transient\", \"is_retryable\": true, \"attempted\": \"failing_tool()\", \"description\": \"Upstream returned 503 \\u2014 retry after a short delay.\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "observations": [
+        {
+          "side": "backend",
+          "tool": "failing_tool",
+          "saw": "exception",
+          "exc_type": "ToolError"
+        },
+        {
+          "side": "proxy",
+          "tool": "dd_failing_tool",
+          "saw": "result",
+          "is_error": true
+        }
+      ]
+    },
+    {
+      "tool": "dd_buggy_tool",
+      "wire_result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Error calling tool 'buggy_tool'",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "observations": [
+        {
+          "side": "backend",
+          "tool": "buggy_tool",
+          "saw": "exception",
+          "exc_type": "ToolError"
+        },
+        {
+          "side": "proxy",
+          "tool": "dd_buggy_tool",
+          "saw": "result",
+          "is_error": true
+        }
+      ]
+    }
+  ],
+  "tool_names": [
+    "dd_ok_tool",
+    "dd_failing_tool",
+    "dd_buggy_tool"
+  ]
+}

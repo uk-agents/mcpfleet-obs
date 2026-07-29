@@ -1,0 +1,214 @@
+{
+  "fastmcp_version": "3.2.4",
+  "python": "3.12.11",
+  "cases": [
+    {
+      "tool": "ok_tool",
+      "mask_error_details": true,
+      "wire_result": {
+        "meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "fine",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": {
+          "result": "fine"
+        },
+        "isError": false
+      },
+      "middleware_observation": {
+        "tool": "ok_tool",
+        "middleware_saw": "result",
+        "result_is_error": "<no attr>",
+        "result_type": "ToolResult"
+      }
+    },
+    {
+      "tool": "empty_tool",
+      "mask_error_details": true,
+      "wire_result": {
+        "meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\": \"empty\", \"result_count\": 0, \"detail\": \"Query executed successfully, no matches.\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": {
+          "result": "{\"status\": \"empty\", \"result_count\": 0, \"detail\": \"Query executed successfully, no matches.\"}"
+        },
+        "isError": false
+      },
+      "middleware_observation": {
+        "tool": "empty_tool",
+        "middleware_saw": "result",
+        "result_is_error": "<no attr>",
+        "result_type": "ToolResult"
+      }
+    },
+    {
+      "tool": "structured_tool_error",
+      "mask_error_details": true,
+      "wire_result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error_category\": \"transient\", \"is_retryable\": true, \"attempted\": \"structured_tool_error()\", \"description\": \"Upstream returned 503 \\u2014 retry after a short delay.\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "middleware_observation": {
+        "tool": "structured_tool_error",
+        "middleware_saw": "exception",
+        "exc_type": "ToolError",
+        "exc_str": "{\"error_category\": \"transient\", \"is_retryable\": true, \"attempted\": \"structured_tool_error()\", \"description\": \"Upstream returned 503 \\u2014 retry after a short delay.\"}"
+      }
+    },
+    {
+      "tool": "plain_exception",
+      "mask_error_details": true,
+      "wire_result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Error calling tool 'plain_exception'",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "middleware_observation": {
+        "tool": "plain_exception",
+        "middleware_saw": "exception",
+        "exc_type": "ToolError",
+        "exc_str": "Error calling tool 'plain_exception'"
+      }
+    },
+    {
+      "tool": "ok_tool",
+      "mask_error_details": false,
+      "wire_result": {
+        "meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "fine",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": {
+          "result": "fine"
+        },
+        "isError": false
+      },
+      "middleware_observation": {
+        "tool": "ok_tool",
+        "middleware_saw": "result",
+        "result_is_error": "<no attr>",
+        "result_type": "ToolResult"
+      }
+    },
+    {
+      "tool": "empty_tool",
+      "mask_error_details": false,
+      "wire_result": {
+        "meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\": \"empty\", \"result_count\": 0, \"detail\": \"Query executed successfully, no matches.\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": {
+          "result": "{\"status\": \"empty\", \"result_count\": 0, \"detail\": \"Query executed successfully, no matches.\"}"
+        },
+        "isError": false
+      },
+      "middleware_observation": {
+        "tool": "empty_tool",
+        "middleware_saw": "result",
+        "result_is_error": "<no attr>",
+        "result_type": "ToolResult"
+      }
+    },
+    {
+      "tool": "structured_tool_error",
+      "mask_error_details": false,
+      "wire_result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error_category\": \"transient\", \"is_retryable\": true, \"attempted\": \"structured_tool_error()\", \"description\": \"Upstream returned 503 \\u2014 retry after a short delay.\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "middleware_observation": {
+        "tool": "structured_tool_error",
+        "middleware_saw": "exception",
+        "exc_type": "ToolError",
+        "exc_str": "{\"error_category\": \"transient\", \"is_retryable\": true, \"attempted\": \"structured_tool_error()\", \"description\": \"Upstream returned 503 \\u2014 retry after a short delay.\"}"
+      }
+    },
+    {
+      "tool": "plain_exception",
+      "mask_error_details": false,
+      "wire_result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Error calling tool 'plain_exception': INTERNAL-SECRET-DETAIL db password wrong",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "middleware_observation": {
+        "tool": "plain_exception",
+        "middleware_saw": "exception",
+        "exc_type": "ToolError",
+        "exc_str": "Error calling tool 'plain_exception': INTERNAL-SECRET-DETAIL db password wrong"
+      }
+    }
+  ]
+}

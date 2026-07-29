@@ -1,0 +1,73 @@
+{
+  "fastmcp_version": "3.2.3",
+  "schemas": {
+    "single_model_tool": {
+      "additionalProperties": false,
+      "properties": {
+        "params": {
+          "additionalProperties": false,
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "limit": {
+              "default": 10,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "params"
+      ],
+      "type": "object"
+    },
+    "flat_tool": {
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    }
+  },
+  "calls": {
+    "single_model_flat_args": {
+      "args": {
+        "query": "x",
+        "limit": 5
+      },
+      "is_error": true,
+      "text": "3 validation errors for call[single_model_tool]\nparams\n  Missing required argument [type=missing_argument, input_value={'query': 'x', 'limit': 5}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing_argument\nquery\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/unexpected_keyword_argument\nlimit\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/unexpected_keyword_argument"
+    },
+    "single_model_nested_args": {
+      "args": {
+        "params": {
+          "query": "x",
+          "limit": 5
+        }
+      },
+      "is_error": false,
+      "text": "got x"
+    },
+    "flat_tool_flat_args": {
+      "args": {
+        "query": "x"
+      },
+      "is_error": false,
+      "text": "got x"
+    }
+  }
+}
