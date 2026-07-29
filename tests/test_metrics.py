@@ -1,4 +1,3 @@
-import json
 from types import SimpleNamespace
 
 import pytest
@@ -55,6 +54,24 @@ async def test_is_error_result_counts_error(mw):
     assert _value(registry, "testfleet_tool_calls_total",
                   tool="my_tool", transport="http", region="local",
                   status="error", error_category="unknown") == 1.0
+
+
+async def test_is_error_result_with_payload_extracts_category(mw):
+    """is_error=True with populated content[0].text containing FleetErrorPayload
+    JSON should parse and extract error_category correctly."""
+    from mcpfleet_obs.errors import FleetErrorPayload
+    middleware, registry = mw
+    payload_json = FleetErrorPayload(
+        error_category="transient", is_retryable=True,
+        attempted="t()", description="d").model_dump_json()
+    async def call_next(ctx):
+        return SimpleNamespace(
+            is_error=True,
+            content=[SimpleNamespace(text=payload_json)])
+    await middleware.on_call_tool(_ctx(), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="my_tool", transport="http", region="local",
+                  status="error", error_category="transient") == 1.0
 
 
 async def test_unknown_tool_bucketed(mw):
