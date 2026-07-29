@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
       - run: uv sync --group dev
       - run: uv pip install "fastmcp==${{ matrix.fastmcp }}"
-      - run: uv run pytest tests/ -q
+      - run: uv run --no-sync pytest tests/ -q
 
   test-fastmcp-4-beta:
     name: pytest (fastmcp 4.0.0b1, allowed failure)
@@ -32,4 +32,4 @@ jobs:
           python-version: "3.12"
       - run: uv sync --group dev
       - run: uv pip install --prerelease=allow "fastmcp==4.0.0b1"
-      - run: uv run pytest tests/ -q
+      - run: uv run --no-sync pytest tests/ -q
