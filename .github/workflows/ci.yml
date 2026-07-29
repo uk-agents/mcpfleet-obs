@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: pytest (fastmcp ${{ matrix.fastmcp }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fastmcp: ["3.2.3", "3.2.4", "3.3.0", "3.4.5"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - run: uv pip install "fastmcp==${{ matrix.fastmcp }}"
+      - run: uv run pytest tests/ -q
+
+  test-fastmcp-4-beta:
+    name: pytest (fastmcp 4.0.0b1, allowed failure)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - run: uv pip install --prerelease=allow "fastmcp==4.0.0b1"
+      - run: uv run pytest tests/ -q
