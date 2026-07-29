@@ -1,0 +1,1328 @@
+{
+  "bills_get_bill": {
+    "additionalProperties": false,
+    "properties": {
+      "bill_id": {
+        "description": "Bill ID from bills_search_bills results.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "max_summary_chars": {
+        "default": 5000,
+        "description": "Maximum characters of the bill summary text to return. Default 5,000 (~1,250 tokens) covers most bills. Raise for substantive government bills (Finance Act, Levelling-up) whose summary runs longer. Check summary_truncated in the response to see if it was cut.",
+        "maximum": 50000,
+        "minimum": 500,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "bill_id"
+    ],
+    "type": "object"
+  },
+  "bills_search_bills": {
+    "additionalProperties": false,
+    "properties": {
+      "house": {
+        "anyOf": [
+          {
+            "enum": [
+              "Commons",
+              "Lords",
+              "All"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by originating house. Omit for all houses."
+      },
+      "limit": {
+        "default": 20,
+        "description": "Maximum bills to return in this call. Default 20 keeps responses focused; raise up to 100 for bulk exports.",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of results to skip before this page. Default 0 for the first page. Re-call with offset=offset+returned while has_more is true to paginate.",
+        "maximum": 2000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "query": {
+        "description": "Search term for bill titles and descriptions, e.g. 'online safety' or 'financial services'.",
+        "maxLength": 500,
+        "minLength": 1,
+        "type": "string"
+      },
+      "session": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Numeric parliamentary session ID (e.g. 40 = 2024-25, 39 = 2023-24). NOT a year string like '2025'. If you only know the year, omit this and filter the results instead. Omit to search all sessions."
+      },
+      "stage": {
+        "anyOf": [
+          {
+            "enum": [
+              "firstreading",
+              "secondreading",
+              "committee",
+              "report",
+              "thirdreading",
+              "royalassent"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by current legislative stage."
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "case_law_grep_judgment": {
+    "additionalProperties": false,
+    "properties": {
+      "case_insensitive": {
+        "default": true,
+        "description": "Default true. Set false for case-sensitive matching.",
+        "type": "boolean"
+      },
+      "max_hits": {
+        "default": 25,
+        "description": "Cap on number of hits returned.",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "pattern": {
+        "description": "Regex pattern (or plain substring) to search within paragraph text. If the pattern doesn't compile as regex, falls back to literal substring match.",
+        "maxLength": 200,
+        "minLength": 2,
+        "type": "string"
+      },
+      "slug": {
+        "description": "TNA judgment slug, e.g. 'uksc/2024/12' or 'ewca/civ/2023/450'.",
+        "minLength": 8,
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug",
+      "pattern"
+    ],
+    "type": "object"
+  },
+  "case_law_search": {
+    "additionalProperties": false,
+    "properties": {
+      "court": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by court slug. Values: 'uksc', 'ukpc', 'ewca/civ', 'ewca/crim', 'ewhc/kb', 'ewhc/ch', 'ewhc/comm', 'ewhc/fam', 'ewhc/pat', 'ewhc/ipec', 'ewhc/admin', 'ewhc/tcc', 'ewhc/costs', 'ewfc', 'ewcop', 'eat', 'ukut/iac', 'ukut/aac', 'ukut/tcc', 'ukut/lc', 'ukftt/tc', 'ukftt/grc', 'nica', 'niqb'."
+      },
+      "from_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Earliest judgment date (YYYY-MM-DD). NOTE: the TNA atom.xml endpoint currently appears to ignore this filter \u2014 the same results come back regardless. Do not rely on it to narrow output; sort+slice client-side or refine `query` instead."
+      },
+      "judge": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by judge surname. Case-insensitive substring match against the indexed form. Use the surname alone ('Reed', 'Sumption') or with the bare title ('Lord Reed'). Honorific suffixes silently zero the result set \u2014 do not append 'JSC', 'of Allermuir', 'KC' etc. Speculating a fuller form than what TNA indexed will return 0 hits with no error."
+      },
+      "limit": {
+        "default": 10,
+        "description": "Maximum results to return (1\u201350). TNA returns up to 50 per request; this slices client-side. Default 10 for a tight shortlist. Set higher for breadth (e.g. 50 to scan the full result set).",
+        "maximum": 50,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "page": {
+        "default": 1,
+        "description": "Result page number (1-indexed)",
+        "maximum": 50,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "party": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by party name"
+      },
+      "query": {
+        "description": "Full-text search query, e.g. 'negligence duty of care'",
+        "maxLength": 500,
+        "minLength": 1,
+        "type": "string"
+      },
+      "to_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Latest judgment date (YYYY-MM-DD). Same caveat as `from_date` \u2014 currently silently ignored by upstream. Filtering happens client-side at best."
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "citations_format_oscola": {
+    "additionalProperties": false,
+    "properties": {
+      "citation_type": {
+        "description": "'type' field from citations_resolve result.",
+        "enum": [
+          "neutral",
+          "law_report",
+          "legislation",
+          "si",
+          "eu_retained"
+        ],
+        "type": "string"
+      },
+      "confidence": {
+        "description": "'confidence' from citations_resolve. Refuses to format if 0.0 \u2014 that means TNA confirmed the document does not exist. Pass only the value citations_resolve returned; do not guess.",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "type": "number"
+      },
+      "court": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'court' from citations_resolve, e.g. 'UKSC', 'EWCA CIV', 'EWHC (KB)'."
+      },
+      "legislation_title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'legislation_title' from citations_resolve, e.g. 'Companies Act 2006'."
+      },
+      "number": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'number' from citations_resolve (judgment number within the year)."
+      },
+      "page": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'page' from citations_resolve (starting page in the law report)."
+      },
+      "raw": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'raw' from citations_resolve. Used as-is for EU retained law \u2014 the original text preserves the Regulation/Directive distinction."
+      },
+      "report_series": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'report_series' from citations_resolve, e.g. 'WLR', 'AC', 'QB'."
+      },
+      "resolved_url": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'resolved_url' from citations_resolve. Must be non-null for neutral citations."
+      },
+      "section": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'section' from citations_resolve, e.g. '47', '12', '20A'."
+      },
+      "si_number": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'si_number' from citations_resolve."
+      },
+      "si_year": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'si_year' from citations_resolve."
+      },
+      "volume": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'volume' from citations_resolve (law report volume, if any)."
+      },
+      "year": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "'year' from citations_resolve."
+      }
+    },
+    "required": [
+      "citation_type",
+      "confidence"
+    ],
+    "type": "object"
+  },
+  "citations_network": {
+    "additionalProperties": false,
+    "properties": {
+      "case_uri": {
+        "description": "TNA judgment URI slug, e.g. 'uksc/2024/12' or 'ewca/civ/2023/450'. Use the 'uri' field from case_law_search results \u2014 not the full URL. Do not include the 'https://caselaw.nationalarchives.gov.uk/' prefix.",
+        "minLength": 5,
+        "type": "string"
+      }
+    },
+    "required": [
+      "case_uri"
+    ],
+    "type": "object"
+  },
+  "citations_parse": {
+    "additionalProperties": false,
+    "properties": {
+      "disambiguate": {
+        "default": false,
+        "description": "Default False \u2014 pure-regex parsing, no model in the loop. If True, ambiguous citations (e.g. bare EWHC without a division) are sent to the connected client's own LLM, via MCP sampling, to resolve the division. Opt in only when you want best-effort division resolution and accept that a model shapes the result.",
+        "type": "boolean"
+      },
+      "text": {
+        "description": "Free text containing OSCOLA citations to extract. Supported: neutral citations ([2024] UKSC 12), law reports ([2024] 1 WLR 100), legislation sections (s.47 Companies Act 2006), SIs (SI 2018/1234), retained EU law (Regulation (EU) 2016/679). Max 50,000 chars.",
+        "maxLength": 50000,
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "type": "object"
+  },
+  "citations_resolve": {
+    "additionalProperties": false,
+    "properties": {
+      "citation": {
+        "description": "A single OSCOLA citation to parse and resolve. E.g. '[2024] UKSC 12', 'SI 2018/1234', 's.47 Companies Act 2006'",
+        "maxLength": 500,
+        "minLength": 3,
+        "type": "string"
+      }
+    },
+    "required": [
+      "citation"
+    ],
+    "type": "object"
+  },
+  "committees_get_committee": {
+    "additionalProperties": false,
+    "properties": {
+      "committee_id": {
+        "description": "Committee ID from committees_search_committees results.",
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "committee_id"
+    ],
+    "type": "object"
+  },
+  "committees_search_committees": {
+    "additionalProperties": false,
+    "properties": {
+      "active_only": {
+        "default": true,
+        "description": "If true, only return currently active committees.",
+        "type": "boolean"
+      },
+      "house": {
+        "anyOf": [
+          {
+            "enum": [
+              "Commons",
+              "Lords",
+              "Joint"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by house."
+      },
+      "limit": {
+        "default": 100,
+        "description": "Maximum committees to return. Default 100 comfortably covers all currently-active UK select committees. Raise only for historical sweeps.",
+        "maximum": 500,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "query": {
+        "anyOf": [
+          {
+            "maxLength": 300,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Search term for committee names, e.g. 'defence' or 'treasury'. Filtered client-side against committee names. Omit to list all committees."
+      }
+    },
+    "type": "object"
+  },
+  "committees_search_evidence": {
+    "additionalProperties": false,
+    "properties": {
+      "committee_id": {
+        "description": "Committee ID from committees_search_committees results.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "evidence_type": {
+        "default": "both",
+        "description": "Type of evidence to search.",
+        "enum": [
+          "oral",
+          "written",
+          "both"
+        ],
+        "type": "string"
+      },
+      "limit": {
+        "default": 20,
+        "description": "Maximum evidence items to return. Default 20. When evidence_type='both' the limit is split across oral and written (roughly half each).",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "max_title_chars": {
+        "default": 300,
+        "description": "Per-item cap on the free-text title field. Default 300 prevents context blow-up from verbose inquiry titles. Raise to 1000+ only when you need the full title text.",
+        "maximum": 2000,
+        "minimum": 50,
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of evidence items to skip before this page. Default 0. Re-call with offset=offset+returned while has_more is true.",
+        "maximum": 2000,
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "committee_id"
+    ],
+    "type": "object"
+  },
+  "get_prompt": {
+    "additionalProperties": false,
+    "properties": {
+      "arguments": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional arguments for the prompt"
+      },
+      "name": {
+        "description": "The name of the prompt to get",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "type": "object"
+  },
+  "hmrc_check_mtd_status": {
+    "additionalProperties": false,
+    "properties": {
+      "vrn": {
+        "description": "VAT Registration Number: 9 digits, e.g. '123456789'. GB prefix accepted and stripped automatically.",
+        "maxLength": 12,
+        "minLength": 9,
+        "type": "string"
+      }
+    },
+    "required": [
+      "vrn"
+    ],
+    "type": "object"
+  },
+  "hmrc_get_vat_rate": {
+    "additionalProperties": false,
+    "properties": {
+      "commodity_code": {
+        "description": "Commodity code or plain-English description. E.g. 'food', 'domestic fuel', 'software', 'financial services', 'new build residential'",
+        "maxLength": 200,
+        "minLength": 2,
+        "type": "string"
+      }
+    },
+    "required": [
+      "commodity_code"
+    ],
+    "type": "object"
+  },
+  "hmrc_search_guidance": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 10,
+        "description": "Maximum guidance results to return (1\u201325). Passed to the GOV.UK search count param.",
+        "maximum": 25,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "query": {
+        "description": "Search query for HMRC guidance, e.g. 'VAT digital services', 'R&D tax relief SME'",
+        "maxLength": 300,
+        "minLength": 3,
+        "type": "string"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "judgment_get_header": {
+    "additionalProperties": false,
+    "properties": {
+      "slug": {
+        "description": "Judgment slug, e.g. 'uksc/2024/12' or 'ewca/civ/2023/450'",
+        "maxLength": 200,
+        "minLength": 3,
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug"
+    ],
+    "type": "object"
+  },
+  "judgment_get_index": {
+    "additionalProperties": false,
+    "properties": {
+      "slug": {
+        "description": "Judgment slug, e.g. 'uksc/2024/12'",
+        "maxLength": 200,
+        "minLength": 3,
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug"
+    ],
+    "type": "object"
+  },
+  "judgment_get_paragraph": {
+    "additionalProperties": false,
+    "properties": {
+      "eId": {
+        "description": "Paragraph eId from judgment_get_index, e.g. 'para_12'. Numeric strings like '12' are accepted and normalized to 'para_12'.",
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+      },
+      "slug": {
+        "description": "Judgment slug, e.g. 'uksc/2024/12'",
+        "maxLength": 200,
+        "minLength": 3,
+        "type": "string"
+      }
+    },
+    "required": [
+      "slug",
+      "eId"
+    ],
+    "type": "object"
+  },
+  "legislation_get_section": {
+    "additionalProperties": false,
+    "properties": {
+      "max_chars": {
+        "default": 10000,
+        "description": "Maximum characters of section content to return. Default 10,000 (~2,500 tokens) covers almost every section. Raise to 50,000+ only for unusually long Finance Act definition sections. Check content_truncated in the response to see if it was cut.",
+        "maximum": 200000,
+        "minimum": 500,
+        "type": "integer"
+      },
+      "number": {
+        "description": "Chapter or SI number",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "section": {
+        "description": "Section number, e.g. '47' or '12A'. Use the numeric part only \u2014 not 'section-47'. Schedules are not currently supported.",
+        "maxLength": 50,
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": {
+        "description": "Legislation type code: 'ukpga' (Acts), 'uksi' (SIs), 'asp' (Scottish Acts), 'nia' (NI Acts). Use the value from legislation_search results.",
+        "maxLength": 10,
+        "minLength": 2,
+        "type": "string"
+      },
+      "year": {
+        "description": "Year of enactment",
+        "maximum": 2100,
+        "minimum": 1800,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "type",
+      "year",
+      "number",
+      "section"
+    ],
+    "type": "object"
+  },
+  "legislation_get_toc": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 200,
+        "description": "Maximum items to return in this call (default 200, max 1000). Raise only when you need a larger slice in one response. Check has_more and total_items to know if further pages exist.",
+        "maximum": 1000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "number": {
+        "description": "Chapter or SI number",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of items to skip from the flattened TOC. Use with limit to page through very large statutes like the Companies Act 2006 (1300+ items).",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": {
+        "description": "Legislation type code: 'ukpga' (Acts), 'uksi' (SIs), 'asp' (Scottish Acts), 'nia' (NI Acts). Use the value from legislation_search results.",
+        "maxLength": 10,
+        "minLength": 2,
+        "type": "string"
+      },
+      "year": {
+        "description": "Year of enactment",
+        "maximum": 2100,
+        "minimum": 1800,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "type",
+      "year",
+      "number"
+    ],
+    "type": "object"
+  },
+  "legislation_search": {
+    "additionalProperties": false,
+    "properties": {
+      "fulltext": {
+        "default": false,
+        "description": "Default false \u2192 searches Act/SI titles only (best for finding a named Act, e.g. 'Housing Act 1988' returns ukpga/1988/50 first). Set true to search the full text of every Act/SI for the query (returns SIs and regulations that cite the term \u2014 e.g. 'rental deposits' would return many implementing instruments).",
+        "type": "boolean"
+      },
+      "limit": {
+        "default": 20,
+        "description": "Maximum results to return (1\u201350). Passed to the upstream results-count param.",
+        "maximum": 50,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "query": {
+        "description": "Search query, e.g. 'Housing Act 1988' or 'data protection personal data'",
+        "maxLength": 500,
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by type: 'ukpga' (Acts), 'uksi' (SIs), 'asp' (Scottish Acts), 'nia' (NI Acts). Exact-match \u2014 omit if you don't already know whether you're looking for an Act vs an SI."
+      },
+      "year": {
+        "anyOf": [
+          {
+            "maximum": 2100,
+            "minimum": 1800,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by year of enactment (exact-match \u2014 a single integer, not a range). Omit unless you already know the Act's year. Speculating a year (e.g. 'this is recent so it must be 2026') and getting it wrong will zero out the result set. Better workflow: query without `year`, then read the year from the returned results."
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "list_prompts": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "list_resources": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "parliament_find_member": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "description": "Name or partial name, e.g. 'Starmer', 'Baroness Hale'",
+        "maxLength": 200,
+        "minLength": 2,
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "type": "object"
+  },
+  "parliament_get_debate_contributions": {
+    "additionalProperties": false,
+    "properties": {
+      "debate_ext_id": {
+        "description": "Debate GUID (DebateSectionExtId). Chain from parliament_search_hansard top_debates[].debate_ext_id, parliament_lookup_by_column matches[].debate_ext_id, or any tool that surfaces a debate identifier.",
+        "minLength": 8,
+        "type": "string"
+      },
+      "member_id": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional integer Members API ID. When given, only that member's contributions in this debate are returned \u2014 regardless of which words they used. Resolves via parliament_find_member. When omitted, every contribution in the debate is returned (typical debate: 100-200 items)."
+      }
+    },
+    "required": [
+      "debate_ext_id"
+    ],
+    "type": "object"
+  },
+  "parliament_get_debate_divisions": {
+    "additionalProperties": false,
+    "properties": {
+      "debate_ext_id": {
+        "description": "Debate GUID (DebateSectionExtId). Chain from parliament_search_hansard contribution.debate_ext_id, top_debates[].debate_ext_id, or parliament_policy_position_summary top_debates[].debate_ext_id.",
+        "minLength": 8,
+        "type": "string"
+      }
+    },
+    "required": [
+      "debate_ext_id"
+    ],
+    "type": "object"
+  },
+  "parliament_lookup_by_column": {
+    "additionalProperties": false,
+    "properties": {
+      "column_number": {
+        "description": "Hansard column number from an OSCOLA footnote, e.g. '200' for 'HL Deb 14 Oct 2025, vol 849, col 200'. String (not integer) to accommodate column suffixes like '1162W' for written answers.",
+        "maxLength": 20,
+        "minLength": 1,
+        "type": "string"
+      },
+      "house": {
+        "default": "both",
+        "description": "Restrict to one House. Default 'both' searches across both Houses.",
+        "enum": [
+          "Commons",
+          "Lords",
+          "both"
+        ],
+        "type": "string"
+      },
+      "volume_number": {
+        "description": "Hansard volume number (the 'vol 849' part of an OSCOLA citation). Required \u2014 the endpoint only resolves citations when given the volume; sitting date is NOT a substitute (verified live 2026-05-29).",
+        "exclusiveMinimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "column_number",
+      "volume_number"
+    ],
+    "type": "object"
+  },
+  "parliament_member_debates": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 20,
+        "description": "Maximum contributions to return. Default 20.",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "member_id": {
+        "description": "Parliament Members API integer ID. Obtain from parliament_find_member.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of contributions to skip before this page. Default 0. Re-call with offset=offset+returned while has_more is true.",
+        "maximum": 2000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "topic": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional phrase to find in THIS member's contribution text bodies. Hansard searches the words the member actually said, NOT the topic or title of the debate. Pass tokens this member would have spoken \u2014 distinctive arguments ('disproportionate sanction'), statutory references ('section 21'), or motion numbers ('Motion C1') \u2014 not the bill's name (members rarely say e.g. 'Renters\\' Rights Bill' verbatim in their speeches). If you want 'every contribution this member made in a specific debate' regardless of words used, find the debate_ext_id then use parliament_get_debate_contributions(debate_ext_id, member_id=...)."
+      }
+    },
+    "required": [
+      "member_id"
+    ],
+    "type": "object"
+  },
+  "parliament_member_interests": {
+    "additionalProperties": false,
+    "properties": {
+      "category": {
+        "anyOf": [
+          {
+            "enum": [
+              "employment",
+              "employment_adhoc",
+              "employment_ongoing",
+              "donations",
+              "gifts_uk",
+              "overseas_visits",
+              "gifts_overseas",
+              "land",
+              "shareholdings",
+              "miscellaneous",
+              "family_employed",
+              "family_lobbying"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by interest category. Common categories: 'donations' (donations and support), 'gifts_uk' (gifts/hospitality from UK), 'employment' (employment and earnings), 'land' (land and property), 'shareholdings', 'overseas_visits'. Omit for all categories."
+      },
+      "limit": {
+        "default": 20,
+        "description": "Max interests per call. Hard-capped at 20 by the upstream interests-api.parliament.uk (verified live 2026-05-29: Take=100 still returns 20). For prolific members, paginate via offset; total size is in totalResults on the response.",
+        "maximum": 20,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "max_description_chars": {
+        "default": 500,
+        "description": "Per-entry cap on the free-text description field. Default 500 prevents context blow-up on members with lengthy donation or directorship narratives. Raise to 2000+ only for forensic provenance work.",
+        "maximum": 5000,
+        "minimum": 50,
+        "type": "integer"
+      },
+      "member_id": {
+        "description": "Parliament Members API integer ID. Get from parliament_find_member.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of interests to skip before this page. Default 0 for the first page. To paginate prolific members (100+ interests), re-call with offset=offset+returned while the previous response had has_more=true.",
+        "maximum": 500,
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "member_id"
+    ],
+    "type": "object"
+  },
+  "parliament_policy_position_summary": {
+    "additionalProperties": false,
+    "properties": {
+      "from_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Start date (YYYY-MM-DD)"
+      },
+      "house": {
+        "default": "both",
+        "description": "Restrict to one House. Default 'both'.",
+        "enum": [
+          "Commons",
+          "Lords",
+          "both"
+        ],
+        "type": "string"
+      },
+      "max_debates_scanned": {
+        "default": 200,
+        "description": "Hard cap on debates sampled from /search/Debates.json to compute facets. Default 200 issues \u22644 upstream calls (take=50 each). Raise to 2000 (\u226440 calls) for an exhaustive sweep on a heavily-debated topic. Hansard rate limit: 1000 req/5min.",
+        "maximum": 2000,
+        "minimum": 50,
+        "type": "integer"
+      },
+      "to_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "End date (YYYY-MM-DD)"
+      },
+      "topic": {
+        "description": "Phrase to find in Hansard contribution text bodies for the facet aggregation. Same semantics as parliament_search_hansard.query: tokens that appear in members' actual speeches, not bill titles or topic metadata. The aggregator sweeps top_debates[] returned by /search/Debates.json \u2014 those debates are matched on the phrase appearing in titles or contribution text, so passing a Bill title (e.g. 'Renters\\' Rights Bill') usually works for THIS tool even though it wouldn't for member-level text search, because debate-level matching uses metadata in addition to body text.",
+        "maxLength": 200,
+        "minLength": 2,
+        "type": "string"
+      }
+    },
+    "required": [
+      "topic"
+    ],
+    "type": "object"
+  },
+  "parliament_search_hansard": {
+    "additionalProperties": false,
+    "properties": {
+      "contribution_type": {
+        "default": "Spoken",
+        "description": "Which Hansard section to paginate. 'Spoken' = chamber + Westminster Hall debates (the default; what a lawyer usually means). 'Written' = written answers and statements. 'Corrections' = published corrections to the record. The corpus envelope (total_debates, total_divisions, etc.) is independent of this and always populated.",
+        "enum": [
+          "Spoken",
+          "Written",
+          "Corrections"
+        ],
+        "type": "string"
+      },
+      "from_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Start date (YYYY-MM-DD)"
+      },
+      "house": {
+        "default": "both",
+        "description": "Restrict to one House. Default 'both' returns Commons + Lords contributions.",
+        "enum": [
+          "Commons",
+          "Lords",
+          "both"
+        ],
+        "type": "string"
+      },
+      "limit": {
+        "default": 20,
+        "description": "Max contributions per call (1\u2013100). Default 20. Paginate further with offset; total corpus size is in total_corpus on the response.",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "member_id": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter to contributions by a single member. Pass the integer Members API ID (resolve a name via parliament_find_member). The prior `member` field accepted a name string but Hansard's /search.json silently ignored it \u2014 the spec requires `memberId`."
+      },
+      "offset": {
+        "default": 0,
+        "description": "Skip this many contributions before the page. Default 0. Re-call with offset=offset+returned to paginate; has_more flags whether more remain.",
+        "maximum": 5000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "query": {
+        "description": "Phrase to find in Hansard contribution text bodies. Hansard searches the words members actually said in their speeches \u2014 NOT debate titles, topic metadata, or written headlines. Pass tokens that would appear in someone's speech: distinctive arguments ('disproportionate sanction'), statutory references ('section 21'), or specific phrases. Bill titles (e.g. 'Renters\\'s Rights Bill') often DON'T match because members refer to 'the Bill' or 'this legislation' in their speeches. Tokenised matching: 'housing benefit fraud' will match contributions saying 'fraud in housing benefit claims'. For 'all contributions in a specific debate' regardless of words used, drill via top_debates[].debate_ext_id into parliament_get_debate_contributions.",
+        "maxLength": 500,
+        "minLength": 1,
+        "type": "string"
+      },
+      "text_mode": {
+        "default": "preview",
+        "description": "'preview' returns the upstream ~250-char snippet (fast, low context cost). 'full' returns ContributionTextFull (still capped at 3000 chars). For full contribution text without the cap, read the resource hansard://debate/{debate_ext_id}/contribution/{contribution_ext_id}.",
+        "enum": [
+          "preview",
+          "full"
+        ],
+        "type": "string"
+      },
+      "to_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "End date (YYYY-MM-DD)"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "parliament_search_petitions": {
+    "additionalProperties": false,
+    "properties": {
+      "limit": {
+        "default": 20,
+        "description": "Maximum petitions to return. Default 20.",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of petitions to skip before this page. Default 0. Re-call with offset=offset+returned while has_more is true.",
+        "maximum": 2000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "query": {
+        "description": "Search term for petition titles, e.g. 'ban trophy hunting' or 'NHS funding'.",
+        "maxLength": 300,
+        "minLength": 2,
+        "type": "string"
+      },
+      "state": {
+        "default": "all",
+        "description": "Filter by petition state.",
+        "enum": [
+          "open",
+          "closed",
+          "all"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "read_resource": {
+    "additionalProperties": false,
+    "properties": {
+      "uri": {
+        "description": "The URI of the resource to read",
+        "type": "string"
+      }
+    },
+    "required": [
+      "uri"
+    ],
+    "type": "object"
+  },
+  "votes_get_division": {
+    "additionalProperties": false,
+    "properties": {
+      "division_id": {
+        "description": "Division ID from votes_search_divisions results.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "house": {
+        "default": "Commons",
+        "description": "Which house this division belongs to.",
+        "enum": [
+          "Commons",
+          "Lords"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "division_id"
+    ],
+    "type": "object"
+  },
+  "votes_search_divisions": {
+    "additionalProperties": false,
+    "properties": {
+      "from_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Start date (YYYY-MM-DD)."
+      },
+      "house": {
+        "default": "Commons",
+        "description": "Which house to search.",
+        "enum": [
+          "Commons",
+          "Lords"
+        ],
+        "type": "string"
+      },
+      "limit": {
+        "default": 25,
+        "description": "Maximum divisions to return. Default 25 (Commons API max-per-page).",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "member_id": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter to divisions where this member voted. Get the member ID from parliament_find_member."
+      },
+      "offset": {
+        "default": 0,
+        "description": "Number of divisions to skip before this page. Default 0. Re-call with offset=offset+returned while has_more is true.",
+        "maximum": 2000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "query": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Search term for division titles, e.g. 'Rwanda' or 'Online Safety Bill'. Omit to browse recent divisions."
+      },
+      "to_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "End date (YYYY-MM-DD)."
+      }
+    },
+    "type": "object"
+  }
+}
