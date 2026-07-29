@@ -17,8 +17,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/paulieb89/mcpfleet-obs"
-Repository = "https://github.com/paulieb89/mcpfleet-obs"
+Homepage = "https://github.com/uk-agents/mcpfleet-obs"
+Repository = "https://github.com/uk-agents/mcpfleet-obs"
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=0.24"]
