@@ -111,3 +111,94 @@ async def test_integration_real_server_exception_path():
     assert _value(registry, "integ_tool_calls_total",
                   tool="bad", transport="http", region="local",
                   status="error", error_category="transient") == 1.0
+
+
+async def test_fastmcp_validation_error_counts_as_validation(mw):
+    """FastMCP validates arguments against the tool signature BEFORE the body
+    runs. 3.3+ raises its own ValidationError for that; without an explicit
+    branch it falls through to the BaseException catch-all and is recorded as
+    'unknown', conflating agent input mistakes with genuine upstream faults."""
+    from fastmcp.exceptions import ValidationError as FastMCPValidationError
+
+    middleware, registry = mw
+
+    async def call_next(ctx):
+        raise FastMCPValidationError("1 validation error for call[my_tool]")
+
+    with pytest.raises(FastMCPValidationError):
+        await middleware.on_call_tool(_ctx(), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="my_tool", transport="http", region="local",
+                  status="error", error_category="validation") == 1.0
+
+
+async def test_pydantic_argument_error_counts_as_validation(mw):
+    """On fastmcp 3.2.x the same rejection arrives as pydantic's own
+    ValidationError, identifiable only by its 'call[<tool>]' title."""
+    from pydantic import ValidationError as PydanticValidationError
+
+    middleware, registry = mw
+    err = PydanticValidationError.from_exception_data(
+        "call[my_tool]",
+        [{"type": "greater_than_equal", "loc": ("n",), "input": 0,
+          "ctx": {"ge": 1}}])
+
+    async def call_next(ctx):
+        raise err
+
+    with pytest.raises(PydanticValidationError):
+        await middleware.on_call_tool(_ctx(), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="my_tool", transport="http", region="local",
+                  status="error", error_category="validation") == 1.0
+
+
+async def test_body_raised_validation_error_stays_unknown(mw):
+    """A tool body constructing a bad model raises the SAME pydantic class.
+    That is a server bug, not caller input — mislabelling it 'validation'
+    would hide it behind the agents' own mistakes."""
+    from pydantic import ValidationError as PydanticValidationError
+
+    middleware, registry = mw
+    err = PydanticValidationError.from_exception_data(
+        "UpstreamResponse",
+        [{"type": "greater_than_equal", "loc": ("n",), "input": 0,
+          "ctx": {"ge": 1}}])
+
+    async def call_next(ctx):
+        raise err
+
+    with pytest.raises(PydanticValidationError):
+        await middleware.on_call_tool(_ctx(), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="my_tool", transport="http", region="local",
+                  status="error", error_category="unknown") == 1.0
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="my_tool", transport="http", region="local",
+                  status="error", error_category="validation") == 0.0
+
+
+async def test_integration_bad_argument_counts_as_validation():
+    """End-to-end: a constraint violation on a real server must land in
+    'validation', not 'unknown'."""
+    from typing import Annotated
+
+    from fastmcp import Client, FastMCP
+    from pydantic import Field
+
+    registry = CollectorRegistry()
+    metrics = make_metrics("integv", registry=registry)
+    mcp = FastMCP(name="integv")
+    mcp.add_middleware(FleetMetricsMiddleware(metrics))
+
+    @mcp.tool()
+    def search(
+        items_per_page: Annotated[int, Field(ge=1, le=100)] = 20,
+    ) -> str:
+        return "ok"
+
+    async with Client(mcp) as c:
+        await c.call_tool_mcp("search", {"items_per_page": 500})
+    assert _value(registry, "integv_tool_calls_total",
+                  tool="search", transport="http", region="local",
+                  status="error", error_category="validation") == 1.0

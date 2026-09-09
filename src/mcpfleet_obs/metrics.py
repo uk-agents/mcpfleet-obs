@@ -10,8 +10,10 @@ import time
 from dataclasses import dataclass
 
 from fastmcp.exceptions import NotFoundError, ToolError
+from fastmcp.exceptions import ValidationError as FastMCPValidationError
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from prometheus_client import REGISTRY, CollectorRegistry, Counter, Histogram
+from pydantic import ValidationError as PydanticValidationError
 
 from .errors import parse_error_payload
 
@@ -45,6 +47,22 @@ def make_metrics(prefix: str, *, registry: CollectorRegistry | None = None) -> F
     )
 
 
+def _is_argument_validation_error(exc: BaseException, tool: str) -> bool:
+    """True when FastMCP rejected the CALLER's arguments against the tool
+    signature, rather than a validation failure raised inside the tool body.
+
+    The class moved inside the supported range: 3.2.x raises pydantic's
+    ValidationError, 3.3+ raises FastMCP's own. Pydantic's is ambiguous — a
+    tool body constructing a bad model raises the same class — so it counts
+    as an argument error only when pydantic titled it for this call.
+    Verified against 3.2.4 (title 'call[<tool>]') and 3.4.5 (FastMCP class).
+    """
+    if isinstance(exc, FastMCPValidationError):
+        return True
+    return (isinstance(exc, PydanticValidationError)
+            and exc.title == f"call[{tool}]")
+
+
 class FleetMetricsMiddleware(Middleware):
     def __init__(self, metrics: FleetMetrics):
         self.metrics = metrics
@@ -58,6 +76,14 @@ class FleetMetricsMiddleware(Middleware):
             # Scanners probing bogus tool names must not mint metric series.
             self.metrics.tool_calls_total.labels(
                 "_unknown_", TRANSPORT, REGION, "error", "not_found").inc()
+            raise
+        except (FastMCPValidationError, PydanticValidationError) as exc:
+            # A schema rejection is the caller's input mistake, not an upstream
+            # fault. Left in "unknown" it drowns out genuine faults on the
+            # dashboard, since it is by far the most common error in practice.
+            category = ("validation" if _is_argument_validation_error(exc, tool)
+                        else "unknown")
+            self.metrics.tool_calls_total.labels(tool, TRANSPORT, REGION, "error", category).inc()
             raise
         except ToolError as exc:
             payload = parse_error_payload(str(exc))
