@@ -3,7 +3,13 @@
 from .clients import ClientTrackingMiddleware
 from .errors import FleetErrorPayload, parse_error_payload, raise_http_tool_error, raise_tool_error
 from .install import install
-from .metrics import FleetMetricsMiddleware, make_metrics
+from .metrics import (
+    SOURCE_MIDDLEWARE,
+    SOURCE_TOOL,
+    SOURCE_UPSTREAM,
+    FleetMetricsMiddleware,
+    make_metrics,
+)
 
 __all__ = [
     "install",
@@ -14,4 +20,7 @@ __all__ = [
     "raise_http_tool_error",
     "parse_error_payload",
     "FleetErrorPayload",
+    "SOURCE_MIDDLEWARE",
+    "SOURCE_TOOL",
+    "SOURCE_UPSTREAM",
 ]
