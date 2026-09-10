@@ -8,15 +8,16 @@ Consumers: `uk-due-diligence-mcp` and `uk-business-mcp`, both pinned `==`.
 
 ## Releasing — use twine, not the workflow
 
-`.github/workflows/release.yml` has **never successfully published**. Both
-releases to date were hand-uploaded:
+`.github/workflows/release.yml` has **never successfully published**. Every
+release to date was hand-uploaded:
 
 | Version | Tag/release | Workflow run | How it actually reached PyPI |
 |---------|-------------|--------------|------------------------------|
 | 0.1.0   | 2026-07-29  | failed       | hand-uploaded 11 min *before* the run failed |
 | 0.2.0   | 2026-09-09  | failed       | `twine upload` after the run failed |
+| 0.3.0   | 2026-09-10  | not run      | `twine upload`, workflow deliberately skipped |
 
-Both runs failed identically, at `pypa/gh-action-pypi-publish`:
+The 0.1.0 and 0.2.0 runs failed identically, at `pypa/gh-action-pypi-publish`:
 
 ```
 invalid-publisher: valid token, but no corresponding publisher
@@ -47,11 +48,16 @@ Bump with `uv version`, not by editing `pyproject.toml`. A hand edit leaves
 
 After publishing, verify against the **simple index**, not the JSON API — the
 aggregate `/pypi/<pkg>/json` endpoint is CDN-cached and lagged behind a real
-upload by minutes:
+upload by minutes.
+
+Use `--refresh`, not `--refresh-package <name>`. At 0.3.0 the simple index
+already listed the new version while `--refresh-package mcpfleet-obs` still
+resolved the previous one — it refreshes the package but not the cached index
+page it is chosen from, so it can report a stale version with total confidence:
 
 ```bash
 curl -s https://pypi.org/simple/mcpfleet-obs/ | grep -o 'mcpfleet_obs-[0-9.]*'
-uv run --refresh-package mcpfleet-obs --with mcpfleet-obs --no-project \
+uv run --refresh --with mcpfleet-obs --no-project \
   -- python -c "from importlib.metadata import version; print(version('mcpfleet-obs'))"
 ```
 
