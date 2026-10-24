@@ -12,7 +12,10 @@ def _ctx(tool="my_tool"):
     return SimpleNamespace(message=SimpleNamespace(name=tool))
 
 
-def _value(registry, name, **labels):
+def _value(registry, name, *, source="tool", **labels):
+    """source defaults to "tool" — the local-domain case most tests exercise."""
+    if "tool_calls_total" in name:
+        labels["source"] = source
     return registry.get_sample_value(name, labels) or 0.0
 
 
@@ -30,7 +33,7 @@ async def test_ok_result_counts_ok(mw):
     await middleware.on_call_tool(_ctx(), call_next)
     assert _value(registry, "testfleet_tool_calls_total",
                   tool="my_tool", transport="http", region="local",
-                  status="ok", error_category="") == 1.0
+                  status="ok", error_category="", source="") == 1.0
 
 
 async def test_exception_counts_error_with_category(mw):
@@ -83,7 +86,8 @@ async def test_unknown_tool_bucketed(mw):
         await middleware.on_call_tool(_ctx("__verifymcp_probe_abc123__"), call_next)
     assert _value(registry, "testfleet_tool_calls_total",
                   tool="_unknown_", transport="http", region="local",
-                  status="error", error_category="not_found") == 1.0
+                  status="error", error_category="not_found",
+                  source="middleware") == 1.0
 
 
 async def test_duration_observed(mw):
@@ -129,7 +133,8 @@ async def test_fastmcp_validation_error_counts_as_validation(mw):
         await middleware.on_call_tool(_ctx(), call_next)
     assert _value(registry, "testfleet_tool_calls_total",
                   tool="my_tool", transport="http", region="local",
-                  status="error", error_category="validation") == 1.0
+                  status="error", error_category="validation",
+                  source="middleware") == 1.0
 
 
 async def test_pydantic_argument_error_counts_as_validation(mw):
@@ -150,7 +155,8 @@ async def test_pydantic_argument_error_counts_as_validation(mw):
         await middleware.on_call_tool(_ctx(), call_next)
     assert _value(registry, "testfleet_tool_calls_total",
                   tool="my_tool", transport="http", region="local",
-                  status="error", error_category="validation") == 1.0
+                  status="error", error_category="validation",
+                  source="middleware") == 1.0
 
 
 async def test_body_raised_validation_error_stays_unknown(mw):
@@ -201,4 +207,153 @@ async def test_integration_bad_argument_counts_as_validation():
         await c.call_tool_mcp("search", {"items_per_page": 500})
     assert _value(registry, "integv_tool_calls_total",
                   tool="search", transport="http", region="local",
-                  status="error", error_category="validation") == 1.0
+                  status="error", error_category="validation",
+                  source="middleware") == 1.0
+
+
+# --- source attribution -------------------------------------------------
+# Three causes, three owners. The label is derived from mount configuration,
+# never from the shape of the exception.
+
+
+@pytest.fixture
+def proxy_mw():
+    """A middleware configured as uk-business is: four proxy namespaces."""
+    registry = CollectorRegistry()
+    metrics = make_metrics("testfleet", registry=registry)
+    return FleetMetricsMiddleware(
+        metrics, proxy_namespaces=("gov", "law", "dd", "prop")), registry
+
+
+async def test_proxied_tool_error_sourced_upstream(proxy_mw):
+    middleware, registry = proxy_mw
+
+    async def call_next(ctx):
+        raise ToolError("1 validation error for call[govuk_search]")
+
+    with pytest.raises(ToolError):
+        await middleware.on_call_tool(_ctx("gov_govuk_search"), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="gov_govuk_search", transport="http", region="local",
+                  status="error", error_category="unknown",
+                  source="upstream") == 1.0
+
+
+async def test_local_tool_error_sourced_tool_on_a_proxy_server(proxy_mw):
+    """A server with proxy mounts still has local tools; they are not upstream."""
+    middleware, registry = proxy_mw
+
+    async def call_next(ctx):
+        raise_tool_error("transient", is_retryable=True, attempted="t()", description="d")
+
+    with pytest.raises(ToolError):
+        await middleware.on_call_tool(_ctx("health_check"), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="health_check", transport="http", region="local",
+                  status="error", error_category="transient",
+                  source="tool") == 1.0
+
+
+async def test_namespace_match_is_prefix_scoped(proxy_mw):
+    """'government_report' must not match the 'gov' namespace — the separator
+    is part of the prefix, so only 'gov_*' is upstream."""
+    middleware, registry = proxy_mw
+
+    async def call_next(ctx):
+        raise ToolError("boom")
+
+    with pytest.raises(ToolError):
+        await middleware.on_call_tool(_ctx("government_report"), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="government_report", transport="http", region="local",
+                  status="error", error_category="unknown",
+                  source="tool") == 1.0
+
+
+async def test_proxied_is_error_result_sourced_upstream(proxy_mw):
+    """The P3 dual path must carry the source label too."""
+    middleware, registry = proxy_mw
+
+    async def call_next(ctx):
+        return SimpleNamespace(is_error=True)
+
+    await middleware.on_call_tool(_ctx("dd_company_search"), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="dd_company_search", transport="http", region="local",
+                  status="error", error_category="unknown",
+                  source="upstream") == 1.0
+
+
+async def test_local_schema_rejection_on_proxied_tool_is_middleware(proxy_mw):
+    """If THIS server rejects the arguments, the source is the middleware even
+    though the tool is proxied — it never reached the remote."""
+    from fastmcp.exceptions import ValidationError as FastMCPValidationError
+
+    middleware, registry = proxy_mw
+
+    async def call_next(ctx):
+        raise FastMCPValidationError("bad args")
+
+    with pytest.raises(FastMCPValidationError):
+        await middleware.on_call_tool(_ctx("gov_govuk_search"), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="gov_govuk_search", transport="http", region="local",
+                  status="error", error_category="validation",
+                  source="middleware") == 1.0
+
+
+async def test_no_proxy_namespaces_means_nothing_is_upstream():
+    """Default configuration: a server with no proxy mounts never emits
+    source='upstream', however its tools happen to be named."""
+    registry = CollectorRegistry()
+    metrics = make_metrics("testfleet", registry=registry)
+    middleware = FleetMetricsMiddleware(metrics)
+
+    async def call_next(ctx):
+        raise ToolError("boom")
+
+    with pytest.raises(ToolError):
+        await middleware.on_call_tool(_ctx("gov_govuk_search"), call_next)
+    assert _value(registry, "testfleet_tool_calls_total",
+                  tool="gov_govuk_search", transport="http", region="local",
+                  status="error", error_category="unknown",
+                  source="tool") == 1.0
+
+
+async def test_integration_proxy_boundary_error_is_upstream_not_middleware():
+    """The case that motivated the source label, end to end.
+
+    An upstream server rejects the caller's arguments. Its pydantic
+    ValidationError is serialised crossing the proxy boundary and arrives here
+    as a ToolError, titled with the remote's UNPREFIXED tool name
+    ('call[search]' while this server calls it 'gov_search'). So neither the
+    exception class nor its title can identify it — but the mount
+    configuration can, and does.
+    """
+    from fastmcp import Client, FastMCP
+    from fastmcp.server import create_proxy
+
+    upstream = FastMCP(name="upstream")
+
+    @upstream.tool()
+    def search(query: str) -> str:
+        return "ok"
+
+    registry = CollectorRegistry()
+    metrics = make_metrics("integp", registry=registry)
+    gateway = FastMCP(name="gateway")
+    gateway.mount(create_proxy(upstream), namespace="gov")
+    gateway.add_middleware(FleetMetricsMiddleware(metrics, proxy_namespaces=("gov",)))
+
+    async with Client(gateway) as c:
+        await c.call_tool_mcp("gov_search", {})  # missing required 'query'
+
+    upstream_errors = [
+        s for m in registry.collect() for s in m.samples
+        if s.name == "integp_tool_calls_total"
+        and s.labels.get("status") == "error"
+    ]
+    assert upstream_errors, "the failed proxied call was not counted at all"
+    assert all(s.labels["source"] == "upstream" for s in upstream_errors), (
+        f"expected every error sourced upstream, got "
+        f"{[(s.labels['tool'], s.labels['source']) for s in upstream_errors]}")
