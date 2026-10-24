@@ -1,6 +1,6 @@
 [project]
 name = "mcpfleet-obs"
-version = "0.3.0"
+version = "0.4.0"
 description = "Shared error taxonomy, metrics, and client tracking for the mcpfleet MCP servers"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -9,7 +9,7 @@ authors = [
     { name = "Paul Boucher" },
 ]
 dependencies = [
-    "fastmcp>=3.2.3,<4",
+    "fastmcp>=3.2.3,<5",
     "prometheus-client>=0.20",
     "pydantic>=2.7",
     "httpx>=0.27",
