@@ -36,17 +36,18 @@ async def test_install_wires_metrics_route_and_connection_counter():
     )
     assert tool_calls_ok == 1.0
 
-    # in-process fastmcp.Client defaults clientInfo to name="mcp",
-    # version="0.1.0" (mcp.client.session.DEFAULT_CLIENT_INFO) when no
-    # explicit client_info is passed — see clients.py's on_request handler,
-    # which reads clientInfo off the initialize request params.
-    connections_total = sum(
-        sample.value
+    # in-process fastmcp.Client defaults its client info to name="mcp" when none
+    # is passed. Asserting the NAME matters: counting any sample let a client
+    # recorded as "unknown" pass, which hid the SDK 2.x clientInfo -> client_info
+    # rename on FastMCP 4.
+    connections = {
+        sample.labels["client_name"]: sample.value
         for metric in registry.collect()
         for sample in metric.samples
         if sample.name == "wired_client_connections_total"
-    )
-    assert connections_total >= 1.0
+    }
+    assert connections.get("mcp", 0.0) >= 1.0, connections
+    assert "unknown" not in connections, connections
 
 
 @pytest.mark.asyncio

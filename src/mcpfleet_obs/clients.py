@@ -40,7 +40,10 @@ def _field(obj, key: str):
 def _client_identity(context: MiddlewareContext) -> tuple[str, str]:
     params = context.message.params
     if context.method == "initialize":
-        info = _field(params, "clientInfo")
+        # The MCP SDK renamed InitializeRequestParams.clientInfo to client_info in 2.x
+        # (FastMCP 4). Reading only the old name reported every handshake-era client
+        # as "unknown" there; the old name is still what SDK 1.x (FastMCP 3) exposes.
+        info = _field(params, "client_info") or _field(params, "clientInfo")
     else:
         info = _field(_field(params, "meta") or {}, _META_CLIENT_INFO)
     return (_field(info, "name") or "unknown", _field(info, "version") or "unknown")
