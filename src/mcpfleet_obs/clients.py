@@ -1,9 +1,34 @@
 """Client tracking middleware."""
 import logging
+import os
 
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 
 from .metrics import REGION, TRANSPORT, FleetMetrics
+
+CLIENT_LABEL_MAX = int(os.getenv("CLIENT_LABEL_MAX", "40"))
+
+
+class _BoundedLabel:
+    """First-come bound on how many distinct values a metric label can take.
+
+    Client names are chosen by whoever connects, and every distinct value is a
+    permanent series. The first `limit` distinct values keep their own label;
+    later ones fold into "other". The exact name is still in the
+    client_connected log line.
+    """
+
+    def __init__(self, limit: int) -> None:
+        self._limit = limit
+        self._seen: set[str] = set()
+
+    def resolve(self, value: str) -> str:
+        if value in self._seen:
+            return value
+        if len(self._seen) < self._limit:
+            self._seen.add(value)
+            return value
+        return "other"
 
 
 class ClientTrackingMiddleware(Middleware):
@@ -12,17 +37,26 @@ class ClientTrackingMiddleware(Middleware):
     Logs client identity (name, version) and transport context on every initialize handshake.
     """
 
-    def __init__(self, metrics: FleetMetrics, *, logger_name: str):
+    def __init__(self, metrics: FleetMetrics, *, logger_name: str,
+                 client_label_max: int = CLIENT_LABEL_MAX):
         self.metrics = metrics
         self._log = logging.getLogger(logger_name)
+        self._client_labels = _BoundedLabel(client_label_max)
 
     async def on_request(self, context: MiddlewareContext, call_next):
         result = await call_next(context)
         if context.method in _HANDSHAKE_METHODS:
             client_name, client_version = _client_identity(context)
-            self._log.info("client_connected client=%s version=%s transport=%s region=%s",
-                          client_name, client_version, TRANSPORT, REGION)
-            self.metrics.client_connections_total.labels(client_name, client_version, TRANSPORT, REGION).inc()
+            caps = _field(context.message.params, "capabilities")
+            cap_keys = [k for k, v in (caps.model_dump().items() if hasattr(caps, "model_dump") else []) if v is not None]
+            self._log.info("client_connected client=%s version=%s capabilities=%s transport=%s region=%s",
+                          client_name, client_version, cap_keys, TRANSPORT, REGION)
+            label = self._client_labels.resolve(client_name)
+            # Version folds with the name so a folded client can't mint one
+            # series per version string.
+            self.metrics.client_connections_total.labels(
+                label, client_version if label != "other" else "other", TRANSPORT, REGION
+            ).inc()
         return result
 
 

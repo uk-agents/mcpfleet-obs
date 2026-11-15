@@ -7,12 +7,13 @@ from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, CollectorRegistry, 
 from starlette.requests import Request
 from starlette.responses import Response
 
-from .clients import ClientTrackingMiddleware
+from .clients import CLIENT_LABEL_MAX, ClientTrackingMiddleware
 from .metrics import FleetMetrics, FleetMetricsMiddleware, _dist_version, make_metrics
 
 
 def install(mcp: FastMCP, *, prefix: str,
             proxy_namespaces: Sequence[str] = (),
+            client_label_max: int = CLIENT_LABEL_MAX,
             registry: CollectorRegistry | None = None) -> FleetMetrics:
     """Install the fleet observability stack: client tracking, metrics, and /metrics endpoint.
 
@@ -25,6 +26,10 @@ def install(mcp: FastMCP, *, prefix: str,
             source="upstream" rather than source="tool", because the failure
             belongs to the remote server and not to this one. Leave empty for a
             server with no proxy mounts.
+        client_label_max: Cap on distinct client_name series on
+            client_connections_total. The first this many distinct client
+            names keep their own label; later ones fold into "other"
+            (versions fold too). Defaults to CLIENT_LABEL_MAX env or 40.
         registry: Optional Prometheus registry (uses default if None)
 
     Returns:
@@ -42,7 +47,9 @@ def install(mcp: FastMCP, *, prefix: str,
         python_version=platform.python_version(),
     ).set(1)
 
-    mcp.add_middleware(ClientTrackingMiddleware(metrics, logger_name=f"fastmcp.{prefix}.clients"))
+    mcp.add_middleware(ClientTrackingMiddleware(
+        metrics, logger_name=f"fastmcp.{prefix}.clients",
+        client_label_max=client_label_max))
     mcp.add_middleware(FleetMetricsMiddleware(metrics, proxy_namespaces=proxy_namespaces))
 
     @mcp.custom_route("/metrics", methods=["GET"])

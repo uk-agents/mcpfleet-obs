@@ -121,11 +121,17 @@ class FleetMetricsMiddleware(Middleware):
 
     async def on_call_tool(self, context: MiddlewareContext, call_next):
         tool = context.message.name
+        # `tool` is client-supplied until proven registered. The call counter
+        # folds unknown names into "_unknown_", and the duration histogram must
+        # observe under the same folded label — a bogus name mints ~20 series
+        # per value there (buckets + sum + count).
+        label = tool
         t0 = time.perf_counter()
         try:
             result = await call_next(context)
         except NotFoundError:
             # Scanners probing bogus tool names must not mint metric series.
+            label = "_unknown_"
             self.metrics.tool_calls_total.labels(
                 "_unknown_", TRANSPORT, REGION, "error", "not_found",
                 SOURCE_MIDDLEWARE).inc()
@@ -161,7 +167,7 @@ class FleetMetricsMiddleware(Middleware):
                 tool, TRANSPORT, REGION, "error", "unknown", self._source_of(tool)).inc()
             raise
         finally:
-            self.metrics.tool_duration_seconds.labels(tool, TRANSPORT, REGION).observe(
+            self.metrics.tool_duration_seconds.labels(label, TRANSPORT, REGION).observe(
                 time.perf_counter() - t0)
         if getattr(result, "is_error", False):
             payload = None
