@@ -1,4 +1,4 @@
-"""Fleet error taxonomy. Payload contract verified against fastmcp 3.2.3-4.0.0b1
+"""Fleet error taxonomy. Payload contract verified against fastmcp 3.2.3-4.1.3
 (probes/fastmcp-error-shapes/PROBE-REPORT.md): ToolError messages survive
 mask_error_details=True and create_proxy() hops verbatim."""
 from typing import Literal, NoReturn
