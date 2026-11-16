@@ -26,10 +26,12 @@ def install(mcp: FastMCP, *, prefix: str,
             source="upstream" rather than source="tool", because the failure
             belongs to the remote server and not to this one. Leave empty for a
             server with no proxy mounts.
-        client_label_max: Cap on distinct client_name series on
-            client_connections_total. The first this many distinct client
-            names keep their own label; later ones fold into "other"
-            (versions fold too). Defaults to CLIENT_LABEL_MAX env or 40.
+        client_label_max: Cap on distinct client name series on
+            client_connections_total and on the client label of
+            tool_calls_total (each bounded independently). The first this
+            many distinct names keep their own label; later ones fold into
+            "other" (versions fold too). Defaults to CLIENT_LABEL_MAX env
+            or 40.
         registry: Optional Prometheus registry (uses default if None)
 
     Returns:
@@ -50,7 +52,9 @@ def install(mcp: FastMCP, *, prefix: str,
     mcp.add_middleware(ClientTrackingMiddleware(
         metrics, logger_name=f"fastmcp.{prefix}.clients",
         client_label_max=client_label_max))
-    mcp.add_middleware(FleetMetricsMiddleware(metrics, proxy_namespaces=proxy_namespaces))
+    mcp.add_middleware(FleetMetricsMiddleware(
+        metrics, proxy_namespaces=proxy_namespaces,
+        client_label_max=client_label_max))
 
     @mcp.custom_route("/metrics", methods=["GET"])
     async def metrics_endpoint(request: Request) -> Response:

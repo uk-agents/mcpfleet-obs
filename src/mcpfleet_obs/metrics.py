@@ -5,7 +5,6 @@ proxied tool failure surfaces as a result with is_error=True and no
 exception (probes/fastmcp-error-shapes/PROBE-REPORT.md, P3). Exception-only
 middleware silently counts those as ok.
 """
-import os
 import platform
 import time
 from collections.abc import Sequence
@@ -18,11 +17,17 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 from pydantic import ValidationError as PydanticValidationError
 
+from .clients import (
+    CLIENT_LABEL_MAX,
+    REGION,
+    TRANSPORT,
+    _BoundedLabel,
+    resolve_call_client,
+    resolve_ip_hash,
+)
 from .errors import parse_error_payload
 
 BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0)
-TRANSPORT = os.getenv("FASTMCP_TRANSPORT", "http")
-REGION = os.getenv("FLY_REGION", "local")
 
 
 # Where an error was raised, derived from mount configuration rather than from
@@ -56,7 +61,8 @@ def make_metrics(prefix: str, *, registry: CollectorRegistry | None = None) -> F
     return FleetMetrics(
         tool_calls_total=Counter(
             f"{prefix}_tool_calls_total", "Count of MCP tool invocations.",
-            labelnames=["tool", "transport", "region", "status", "error_category", "source"],
+            labelnames=["tool", "transport", "region", "status", "error_category",
+                        "source", "client", "ip_hash"],
             registry=registry),
         tool_duration_seconds=Histogram(
             f"{prefix}_tool_duration_seconds", "Tool invocation latency in seconds.",
@@ -109,10 +115,15 @@ class FleetMetricsMiddleware(Middleware):
     """
 
     def __init__(self, metrics: FleetMetrics,
-                 proxy_namespaces: Sequence[str] = ()):
+                 proxy_namespaces: Sequence[str] = (),
+                 client_label_max: int = CLIENT_LABEL_MAX):
         self.metrics = metrics
         # Mounting with namespace="gov" prefixes its tools "gov_".
         self._proxy_prefixes = tuple(f"{ns}_" for ns in proxy_namespaces)
+        # Separate bound from the handshake counter's: the call-site population
+        # mixes declared clientInfo with "ua:*" fallbacks, and first-come order
+        # matters — a folded "other" on calls must not evict a handshake name.
+        self._call_labels = _BoundedLabel(client_label_max)
 
     def _source_of(self, tool: str) -> str:
         """Where a failure in this tool came from, by mount configuration."""
@@ -121,6 +132,13 @@ class FleetMetricsMiddleware(Middleware):
 
     async def on_call_tool(self, context: MiddlewareContext, call_next):
         tool = context.message.name
+        # Resolved once per call: modern-protocol clients carry clientInfo in
+        # _meta on every request, legacy HTTP clients resolve through the
+        # User-Agent, and anything else is "unknown". Attribution is worth
+        # keeping even on the _unknown_ fold — bogus-name probes are exactly
+        # the traffic whose source you want to know.
+        client = resolve_call_client(context, self._call_labels)
+        ip_hash = resolve_ip_hash()
         # `tool` is client-supplied until proven registered. The call counter
         # folds unknown names into "_unknown_", and the duration histogram must
         # observe under the same folded label — a bogus name mints ~20 series
@@ -134,7 +152,7 @@ class FleetMetricsMiddleware(Middleware):
             label = "_unknown_"
             self.metrics.tool_calls_total.labels(
                 "_unknown_", TRANSPORT, REGION, "error", "not_found",
-                SOURCE_MIDDLEWARE).inc()
+                SOURCE_MIDDLEWARE, client, ip_hash).inc()
             raise
         except (FastMCPValidationError, PydanticValidationError) as exc:
             # A schema rejection is the caller's input mistake, not an upstream
@@ -154,17 +172,20 @@ class FleetMetricsMiddleware(Middleware):
             category = "validation" if is_argument_error else "unknown"
             source = SOURCE_MIDDLEWARE if is_argument_error else self._source_of(tool)
             self.metrics.tool_calls_total.labels(
-                tool, TRANSPORT, REGION, "error", category, source).inc()
+                tool, TRANSPORT, REGION, "error", category, source,
+                client, ip_hash).inc()
             raise
         except ToolError as exc:
             payload = parse_error_payload(str(exc))
             category = payload.error_category if payload else "unknown"
             self.metrics.tool_calls_total.labels(
-                tool, TRANSPORT, REGION, "error", category, self._source_of(tool)).inc()
+                tool, TRANSPORT, REGION, "error", category, self._source_of(tool),
+                client, ip_hash).inc()
             raise
         except BaseException:
             self.metrics.tool_calls_total.labels(
-                tool, TRANSPORT, REGION, "error", "unknown", self._source_of(tool)).inc()
+                tool, TRANSPORT, REGION, "error", "unknown", self._source_of(tool),
+                client, ip_hash).inc()
             raise
         finally:
             self.metrics.tool_duration_seconds.labels(label, TRANSPORT, REGION).observe(
@@ -176,8 +197,9 @@ class FleetMetricsMiddleware(Middleware):
                 payload = parse_error_payload(content[0].text)
             category = payload.error_category if payload else "unknown"
             self.metrics.tool_calls_total.labels(
-                tool, TRANSPORT, REGION, "error", category, self._source_of(tool)).inc()
+                tool, TRANSPORT, REGION, "error", category, self._source_of(tool),
+                client, ip_hash).inc()
         else:
             self.metrics.tool_calls_total.labels(
-                tool, TRANSPORT, REGION, "ok", "", "").inc()
+                tool, TRANSPORT, REGION, "ok", "", "", client, ip_hash).inc()
         return result
