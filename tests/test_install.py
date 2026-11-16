@@ -32,6 +32,10 @@ async def test_install_wires_metrics_route_and_connection_counter():
             "status": "ok",
             "error_category": "",
             "source": "",
+            # In-process Client offers clientInfo on initialize; the call
+            # resolves it through the session path. Outside HTTP, ip_hash "".
+            "client": "mcp",
+            "ip_hash": "",
         },
     )
     assert tool_calls_ok == 1.0

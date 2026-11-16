@@ -12,10 +12,15 @@ def _ctx(tool="my_tool"):
     return SimpleNamespace(message=SimpleNamespace(name=tool))
 
 
-def _value(registry, name, *, source="tool", **labels):
-    """source defaults to "tool" — the local-domain case most tests exercise."""
+def _value(registry, name, *, source="tool", client="unknown", ip_hash="",
+           **labels):
+    """source defaults to "tool" — the local-domain case most tests exercise.
+    client/ip_hash default to the bare-context outcome: no fastmcp_context, no
+    HTTP request → "unknown" and ""."""
     if "tool_calls_total" in name:
         labels["source"] = source
+        labels["client"] = client
+        labels["ip_hash"] = ip_hash
     return registry.get_sample_value(name, labels) or 0.0
 
 
@@ -114,7 +119,8 @@ async def test_integration_real_server_exception_path():
         await c.call_tool_mcp("bad", {})
     assert _value(registry, "integ_tool_calls_total",
                   tool="bad", transport="http", region="local",
-                  status="error", error_category="transient") == 1.0
+                  status="error", error_category="transient",
+                  client="mcp") == 1.0
 
 
 async def test_fastmcp_validation_error_counts_as_validation(mw):
@@ -208,7 +214,7 @@ async def test_integration_bad_argument_counts_as_validation():
     assert _value(registry, "integv_tool_calls_total",
                   tool="search", transport="http", region="local",
                   status="error", error_category="validation",
-                  source="middleware") == 1.0
+                  source="middleware", client="mcp") == 1.0
 
 
 # --- source attribution -------------------------------------------------
